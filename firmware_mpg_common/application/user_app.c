@@ -88,21 +88,7 @@ Promises:
 */
 void UserAppInitialize(void)
 {
- /* All discrete LEDs to off */
-  LedOff(WHITE);
-  LedOff(PURPLE);
-  LedOff(BLUE);
-  LedOff(CYAN);
-  LedOff(GREEN);
-  LedOff(YELLOW);
-  LedOff(ORANGE);
-  LedOff(RED);
-  
-  /* Backlight to white */  
-  LedOn(LCD_RED);
-  LedOn(LCD_GREEN);
-  LedOn(LCD_BLUE);
-  
+ PWMAudioSetFrequency(BUZZER1, 500);
   /* If good initialization, set state to Idle */
   if( 1 )
   {
@@ -151,117 +137,26 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
-  static u8 u8ColorIndex = 0;
-   static u16 u16BlinkCount = 0;
-    static u8 u8Counter = 0;
-
-  u16BlinkCount++;
-  if(u16BlinkCount == 100)
+   
+  static u16 u16BuzzerFrequency[]={330,294,262,294,330,330,330,294,294,294,330,392,392,330,294,262,294,330,330,330,330,294,294,330,294,262};
+  static u16 u16Counter=0;
+  static u8 i=0;
+  u16Counter++;
+  PWMAudioSetFrequency(BUZZER1,u16BuzzerFrequency[i]);
+  PWMAudioOn(BUZZER1); 
+  if(u16Counter==500)
   {
-    u16BlinkCount = 0;
-    /* Parse the current count to set the LEDs.  RED is bit 0, ORANGE is bit 1,
-    YELLOW is bit 2, GREEN is bit 3. */
-    
-    if(u8Counter & 0x01)
-    {
-      LedOn(RED);
-    }
-    else
-    {
-      LedOff(RED);
-    }
+        i++;
+        if(i==25)
+        {
+          i=0;
+        }
+       
+        u16Counter=0;    
+  }
 
-    if(u8Counter & 0x02)
-    {
-      LedOn(ORANGE);
-    }
-    else
-    {
-      LedOff(ORANGE);
-    }
+  
 
-    if(u8Counter & 0x04)
-    {
-      LedOn(YELLOW);
-    }
-    else
-    {
-      LedOff(YELLOW);
-    }
-
-    if(u8Counter & 0x08)
-    {
-      LedOn(GREEN);
-    }
-    else
-    {
-      LedOff(GREEN);
-    }
-    
-    /* Update the counter and roll at 16 */
-    u8Counter++;
-    if(u8Counter == 16)
-    {
-      u8Counter = 0;
-       /* Manage the back light color */
-      u8ColorIndex++;
-      if(u8ColorIndex == 7)
-      {
-        u8ColorIndex = 0;
-      }
-      /* Set the backlight color: white (all), purple (blue + red), blue, cyan (blue + green),
-      green, yellow (green + red), red */
-      switch(u8ColorIndex)
-      {
-        case 0: /* white */
-          LedOn(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-        case 1: /* purple */
-          LedOn(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-        case 2: /* blue */
-          LedOff(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-          
-        case 3: /* cyan */
-          LedOff(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-          
-        case 4: /* green */
-          LedOff(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        case 5: /* yellow */
-          LedOn(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        case 6: /* red */
-          LedOn(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        default: /* off */
-          LedOff(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-      }
-
-    }
-} 
 } /* end UserAppSM_Idle() */
      
 
