@@ -46,6 +46,9 @@ volatile u32 G_u32UserAppFlags;                       /* Global state flags */
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Existing variables (defined in other files -- should all contain the "extern" keyword) */
+extern u8 G_au8DebugScanfBuffer[];                     /* From debug.c */
+extern u8 G_u8DebugScanfCharCount;                     /* From debug.c  */
+
 extern volatile u32 G_u32SystemFlags;                  /* From main.c */
 extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 
@@ -57,8 +60,13 @@ extern volatile u32 G_u32SystemTime1s;                 /* From board-specific so
 Global variable definitions with scope limited to this local application.
 Variable names shall start with "UserApp_" and be declared as static.
 ***********************************************************************************************************************/
-static fnCode_type UserApp_StateMachine;            /* The state machine function pointer */
-static u32 UserApp_u32Timeout;                      /* Timeout counter used across states */
+static u8 au8UserInputBuffer[USER_INPUT_BUFFER_SIZE];  /* Buffer for reading key input */
+
+static fnCode_type UserApp_StateMachine;               /* The state machine function pointer */
+static u32 UserApp_u32Timeout;                         /* Timeout counter used across states */
+
+static u8 UserApp_au8MyName[] = "A3.leif"; 
+
 
 
 /**********************************************************************************************************************
@@ -88,20 +96,16 @@ Promises:
 */
 void UserAppInitialize(void)
 {
- /* All discrete LEDs to off */
-  LedOff(WHITE);
-  LedOff(PURPLE);
-  LedOff(BLUE);
-  LedOff(CYAN);
-  LedOff(GREEN);
-  LedOff(YELLOW);
-  LedOff(ORANGE);
-  LedOff(RED);
+  LCDMessage(LINE1_START_ADDR, UserApp_au8MyName);     /*LCD Line 1 output My name*/
+  LCDClearChars(LINE1_START_ADDR+7,11 );               /*Clean up LCD Line 1 of other content*/
   
-  /* Backlight to white */  
+  /*Backlight to purple*/
   LedOn(LCD_RED);
-  LedOn(LCD_GREEN);
+  LedOff(LCD_GREEN);
   LedOn(LCD_BLUE);
+
+ 
+
   
   /* If good initialization, set state to Idle */
   if( 1 )
@@ -151,117 +155,26 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
-  static u8 u8ColorIndex = 0;
-   static u16 u16BlinkCount = 0;
-    static u8 u8Counter = 0;
-
-  u16BlinkCount++;
-  if(u16BlinkCount == 100)
+  static u8 u8Line2Adress=0;
+  u8 u8CharCount;
+  u8CharCount = DebugScanf(au8UserInputBuffer);
+  
+  /*Display each character on LCD Line 2 starting from the left and going across the screen*/
+   if(u8CharCount >0)
   {
-    u16BlinkCount = 0;
-    /* Parse the current count to set the LEDs.  RED is bit 0, ORANGE is bit 1,
-    YELLOW is bit 2, GREEN is bit 3. */
-    
-    if(u8Counter & 0x01)
-    {
-      LedOn(RED);
-    }
-    else
-    {
-      LedOff(RED);
-    }
+     LCDMessage(LINE2_START_ADDR+u8Line2Adress, au8UserInputBuffer);
+     u8Line2Adress++;
+  }
 
-    if(u8Counter & 0x02)
-    {
-      LedOn(ORANGE);
-    }
-    else
-    {
-      LedOff(ORANGE);
-    }
+     /*Once the screen is full,clear Line 2 and start again from the left*/
+  if(u8Line2Adress==20) 
+  {
+    u8Line2Adress=0;
+    LCDClearChars(LINE2_START_ADDR, 20);
+  }
+   
 
-    if(u8Counter & 0x04)
-    {
-      LedOn(YELLOW);
-    }
-    else
-    {
-      LedOff(YELLOW);
-    }
-
-    if(u8Counter & 0x08)
-    {
-      LedOn(GREEN);
-    }
-    else
-    {
-      LedOff(GREEN);
-    }
-    
-    /* Update the counter and roll at 16 */
-    u8Counter++;
-    if(u8Counter == 16)
-    {
-      u8Counter = 0;
-       /* Manage the back light color */
-      u8ColorIndex++;
-      if(u8ColorIndex == 7)
-      {
-        u8ColorIndex = 0;
-      }
-      /* Set the backlight color: white (all), purple (blue + red), blue, cyan (blue + green),
-      green, yellow (green + red), red */
-      switch(u8ColorIndex)
-      {
-        case 0: /* white */
-          LedOn(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-        case 1: /* purple */
-          LedOn(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-        case 2: /* blue */
-          LedOff(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-          
-        case 3: /* cyan */
-          LedOff(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-          
-        case 4: /* green */
-          LedOff(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        case 5: /* yellow */
-          LedOn(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        case 6: /* red */
-          LedOn(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        default: /* off */
-          LedOff(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-      }
-
-    }
-} 
+  
 } /* end UserAppSM_Idle() */
      
 
