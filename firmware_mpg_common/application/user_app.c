@@ -66,8 +66,9 @@ static fnCode_type UserApp_StateMachine;               /* The state machine func
 static u32 UserApp_u32Timeout;                         /* Timeout counter used across states */
 
 static u8 UserApp_au8MyName[] = "A3.leif"; 
+static u8 aeLCDMessage[100];
 
-
+static u8 u8NAMECount;
 
 /**********************************************************************************************************************
 Function Definitions
@@ -96,6 +97,7 @@ Promises:
 */
 void UserAppInitialize(void)
 {
+  
   LCDMessage(LINE1_START_ADDR, UserApp_au8MyName);     /*LCD Line 1 output My name*/
   LCDClearChars(LINE1_START_ADDR+7,11 );               /*Clean up LCD Line 1 of other content*/
   
@@ -103,10 +105,12 @@ void UserAppInitialize(void)
   LedOn(LCD_RED);
   LedOff(LCD_GREEN);
   LedOn(LCD_BLUE);
-
  
-
+  PWMAudioSetFrequency(BUZZER1, 500);
   
+  
+   
+   
   /* If good initialization, set state to Idle */
   if( 1 )
   {
@@ -156,31 +160,90 @@ State Machine Function Definitions
 static void UserAppSM_Idle(void)
 {
   static u8 u8NumCharsMessage[] = "\n\rCharacters in buffer: ";
-  static u8 u8Line2Adress=0;
+  static u8 u8NumNAMEMessage[]="\n\rleif,Your name has been detected:";
+  static u8 u8EmptyMessage[]   = "\n\rCharacter count cleared!\r";
   u8 u8CharCount;
-
+  
+  static u16 u16TimeCounter=5000;
+  
+  static u8 u8Line2Adress=0;
   static u8 u8InputCount=0;    /*The variate to keep track of the total number of characters*/
   
+  static u8 u8NAME[4];
+  static u8 u8NAMECount=0;
+  
+  static u8 u8NAMETotalCount=0;
+  
+  static u8 Buzzer=0;
+ 
+  
   u8CharCount = DebugScanf(au8UserInputBuffer);
-  /*Display each character on LCD Line 2 starting from the left and going across the screen*/
-   if(u8CharCount >0)
+  if(u8CharCount >0)
   {
+    /*Display each character on LCD Line 2 starting from the left and going across the screen*/
      LCDMessage(LINE2_START_ADDR+u8Line2Adress, au8UserInputBuffer);
      u8Line2Adress++;
-     
      /*Once input a character,the total of number plus 1*/
      u8InputCount++;
-  }
-
-   /*Once the screen is full,clear Line 2 and start again from the left*/
-  if(u8Line2Adress==20) 
-  {
-    u8Line2Adress=0;
-    LCDClearChars(LINE2_START_ADDR, 20);
-  }
+     
+    /*Monitor each character as it arrives and compare it to the letters of your name. 
+     As each letter arrives that matches the next letter of your name*/
+   if(au8UserInputBuffer[DebugScanf(au8UserInputBuffer)]=='l')
+    {
+       u8NAME[0]=au8UserInputBuffer[DebugScanf(au8UserInputBuffer)];
+       /*Once has detected 'l',outputs 'l' on LCD Line1 */
+        LCDMessage(LINE1_START_ADDR+9, au8UserInputBuffer);
+        u8NAMECount++;
+    }
+    if(au8UserInputBuffer[DebugScanf(au8UserInputBuffer)]=='e'&&u8NAME[0]=='l')
+    {
+      u8NAME[1]=au8UserInputBuffer[DebugScanf(au8UserInputBuffer)];
+      LCDMessage(LINE1_START_ADDR+10, "e");
+      u8NAMECount++;
+    }
+    if(au8UserInputBuffer[DebugScanf(au8UserInputBuffer)]=='i'&&u8NAME[1]=='e')
+    {
+       u8NAME[2]=au8UserInputBuffer[DebugScanf(au8UserInputBuffer)];
+       LCDMessage(LINE1_START_ADDR+11, "i");
+       u8NAMECount++;
+    }
+    if(au8UserInputBuffer[DebugScanf(au8UserInputBuffer)]=='f'&&u8NAME[2]=='i')
+    {
+       u8NAME[3]=au8UserInputBuffer[DebugScanf(au8UserInputBuffer)];
+       LCDMessage(LINE1_START_ADDR+12, "f");
+       u8NAMECount++;
+       /*When your nanme has been detected,outputs name and how many times your name has been detected*/
+       u8NAMETotalCount++;
+       DebugPrintf(u8NumNAMEMessage);
+       DebugPrintNumber(u8NAMETotalCount);
+       DebugLineFeed();
+      
+       Buzzer=1;
+    }
    
+   /*Once has detected all name characters,so make sure NAME ARRAY empty*/
+   if(u8NAMECount%4==0)
+   {
+    for(u8 i=0;i<4;i++)
+    {
+      u8NAME[i]='0';
+    }
+     LCDClearChars(LINE1_START_ADDR+9, 4);
+   }
+    
+    
+    /*Once the screen is full,clear Line 2 and start again from the left*/
+     if(u8Line2Adress==20)
+     {
+       u8Line2Adress=0;
+       LCDClearChars(LINE2_START_ADDR, 20);
+     }
+     
+    }
   
-    if(WasButtonPressed(BUTTON0))
+  
+  
+   if(WasButtonPressed(BUTTON0))
   {
     ButtonAcknowledge(BUTTON0);
     /* The button is currently pressed, so make sure Line 2 is cleared */
@@ -188,7 +251,7 @@ static void UserAppSM_Idle(void)
     /*start againg from the left*/
     u8Line2Adress=0; 
   }
-    
+ 
   /* Print message with the total number of characters received 0n the debug port */
   if(WasButtonPressed(BUTTON1))
   {
@@ -198,9 +261,45 @@ static void UserAppSM_Idle(void)
     DebugPrintNumber(u8InputCount);
     DebugLineFeed();
   }
-
+  
+  
+  if(WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2);
+    /* The button is currently pressed, so reports a message of empty */
+    u8InputCount=0;       /*Make sure output 0 when Button1 was preesed*/
+    DebugPrintf(u8EmptyMessage);
+    DebugLineFeed();
+  }
+  
+  
+ if(WasButtonPressed(BUTTON3))
+  {
+    ButtonAcknowledge(BUTTON3);
+    /* The button is currently pressed, prints the current letter buffer that is storing your name */
+   LCDMessage(LINE1_START_ADDR+14, u8NAME);
+   /*Make sure output current letter right when your name is detected twice or more*/
+   LCDClearChars(LINE1_START_ADDR+14+u8NAMECount%4 , 6);
+   
+  }
 
   
+   u16TimeCounter--;
+   if(Buzzer==1)
+   {
+      PWMAudioOn(BUZZER1);
+    
+     LedOn(RED);
+   }
+   if(u16TimeCounter==0)
+   {
+       PWMAudioOff(BUZZER1);
+       Buzzer=0;
+       LedOff(RED);
+       u16TimeCounter=5000;
+    }
+
+
 } /* end UserAppSM_Idle() */
      
 
