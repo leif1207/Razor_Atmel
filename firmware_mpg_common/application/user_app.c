@@ -155,24 +155,50 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
+  static u8 u8NumCharsMessage[] = "\n\rCharacters in buffer: ";
   static u8 u8Line2Adress=0;
   u8 u8CharCount;
-  u8CharCount = DebugScanf(au8UserInputBuffer);
+
+  static u8 u8InputCount=0;    /*The variate to keep track of the total number of characters*/
   
+  u8CharCount = DebugScanf(au8UserInputBuffer);
   /*Display each character on LCD Line 2 starting from the left and going across the screen*/
    if(u8CharCount >0)
   {
      LCDMessage(LINE2_START_ADDR+u8Line2Adress, au8UserInputBuffer);
      u8Line2Adress++;
+     
+     /*Once input a character,the total of number plus 1*/
+     u8InputCount++;
   }
 
-     /*Once the screen is full,clear Line 2 and start again from the left*/
+   /*Once the screen is full,clear Line 2 and start again from the left*/
   if(u8Line2Adress==20) 
   {
     u8Line2Adress=0;
     LCDClearChars(LINE2_START_ADDR, 20);
   }
    
+  
+    if(WasButtonPressed(BUTTON0))
+  {
+    ButtonAcknowledge(BUTTON0);
+    /* The button is currently pressed, so make sure Line 2 is cleared */
+    LCDClearChars(LINE2_START_ADDR , 20);
+    /*start againg from the left*/
+    u8Line2Adress=0; 
+  }
+    
+  /* Print message with the total number of characters received 0n the debug port */
+  if(WasButtonPressed(BUTTON1))
+  {
+    ButtonAcknowledge(BUTTON1);
+    
+    DebugPrintf(u8NumCharsMessage);
+    DebugPrintNumber(u8InputCount);
+    DebugLineFeed();
+  }
+
 
   
 } /* end UserAppSM_Idle() */
