@@ -94,9 +94,18 @@ Promises:
 */
 void UserAppInitialize(void)
 {
-  u8 au8Message[] = "Please press buttons";
+
+  /* Write a weclome message on the LCD */
+#if MPG1
+  /* Set a message up on the LCD. Delay is required to let the clear command send. */
+  LCDCommand(LCD_CLEAR_CMD);
+  for(u32 i = 0; i < 10000; i++);
+
+#endif /* MPG 1*/
   
-  LCDMessage(LINE1_START_ADDR,au8Message);
+#if 0 // untested for MPG2
+  
+#endif /* MPG2 */
 
  /* Configure ANT for this application */
   G_stAntSetupData.AntChannel          = ANT_CHANNEL_USERAPP;
@@ -109,7 +118,7 @@ void UserAppInitialize(void)
   G_stAntSetupData.AntFrequency        = ANT_FREQUENCY_USERAPP;
   G_stAntSetupData.AntTxPower          = ANT_TX_POWER_USERAPP;
 
-
+  
   /* If good initialization, set state to Idle */
   if( AntChannelConfig(ANT_MASTER) )
   {
@@ -159,89 +168,115 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
-  static u8 u8FalseColor[]={10};
-  static u8 u8TrueColor[]={0x11,22,33,44};
-  static u8 u8CurrentColor[]={0, 0,0xA5, 0, 0, 0, 0, 0};
+  u8 au8PressMessage[] = "Please press buttons";
+  u8 au8RightMessage[]="You are right!";
+  u8 au8WrongMessage[]="Game over";
   
-  static u8 u8Counter=0;
-  
+  static u8 au8TestMessage[20] = {0}; 
+  static u8 au8CurrentMessage[8]= {0};
+  static u8 u8button_en=0;
   static u8 u8ColorCount=0;
+  static u8 u8count=0;
+  static u16 u16Time=0;
+  static u16 u16delay=0;
   
-  u8Counter++;
-  if(IsButtonPressed(BUTTON0))
+  u16Time++;
+  
+  LCDMessage(LINE1_START_ADDR,au8PressMessage);
+  if(u16delay>200)
   {
     
-    LedOn(WHITE);
-    u8CurrentColor[0]=0xff;
-    u8ColorCount++;
-    u8Counter=0;
+       LedOff(WHITE);
+       LedOff(BLUE);
+       LedOff(YELLOW);
+       LedOff(RED);
   }
   else
   {
-    LedOff(WHITE);
+    u16delay++;
   }
   
-  if(IsButtonPressed(BUTTON1))
+  
+   if( WasButtonPressed(BUTTON0))
   {
-    LedOn(BLUE);
-    u8CurrentColor[0]=1;
+     LedOn(WHITE);
+     u16delay=0;
+    au8TestMessage[u8ColorCount] =1;
+    u8button_en=1;
+    u16Time=0;
+    ButtonAcknowledge(BUTTON0);
     u8ColorCount++;
-    u8Counter=0;
-  }
-  else
-  {
-    LedOff(BLUE);
   }
   
-  if(IsButtonPressed(BUTTON2))
+  
+   if( WasButtonPressed(BUTTON1))
   {
-    LedOn(YELLOW);
-    u8CurrentColor[0]=2;
+     LedOn(BLUE);
+     u16delay=0;
+    au8TestMessage[u8ColorCount] =2;
+     u8button_en=1;
+    u16Time=0;
+    ButtonAcknowledge(BUTTON1);
     u8ColorCount++;
-    u8Counter=0;
-  }
-  else
-  {
-    LedOff(YELLOW);
   }
   
-  if(IsButtonPressed(BUTTON3))
+ 
+   if( WasButtonPressed(BUTTON2))
   {
-    LedOn(RED);
-    u8CurrentColor[0]=3;
+     LedOn(YELLOW);
+     u16delay=0;
+    au8TestMessage[u8ColorCount] =3;
+     u8button_en=1;
+    u16Time=0;
+    ButtonAcknowledge(BUTTON2);
     u8ColorCount++;
-    u8Counter=0;
   }
-  else
+
+
+ 
+   if( WasButtonPressed(BUTTON3))
   {
-    LedOff(RED);
+     LedOn(RED);
+      u16delay=0;
+    au8TestMessage[u8ColorCount] =4;
+    u8button_en=1;
+    u16Time=0;
+    ButtonAcknowledge(BUTTON3);
+    u8ColorCount++;
   }
-  
-  if(u8ColorCount=0)
+  if(u8ColorCount==7)
   {
-    u8Counter=0;
+    u8ColorCount=0;
   }
-  
-   /*if(u8Counter==1000)
+  if( AntReadData() )
   {
-   if(u8Counter<10)
+    
+    if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
-      for(u8 i=u8ColorCount;i<11-u8ColorCount;i++)
-      {
-        u8CurrentColor[i]=u8FalseColor[0];
-      }
-    }
     
-    AntQueueBroadcastMessage(u8CurrentColor);
-    u8Counter=0;
-  }*/
+     }
+    
+    
+    else if(G_eAntApiCurrentMessageClass == ANT_TICK)
+    {
+    
+      if((u16Time++>2000)&&(u8button_en==1))
+      {
   
-  if(G_eAntApiCurrentMessageClass == ANT_TICK)
-  {
-    AntQueueBroadcastMessage(u8CurrentColor); 
+           u16Time =0;
+           u8button_en=0;
+           u8ColorCount=0;
+           for(u8count=0;u8count<8;u8count++)
+           {
+             
+               au8CurrentMessage[u8count]=au8TestMessage[u8count];
+               au8TestMessage[u8count]=0;
+            }
+      }
+        AntQueueBroadcastMessage(au8CurrentMessage);
+    }
+
   }
-  
-  
 } /* end UserAppSM_Idle() */
 
 
