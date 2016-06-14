@@ -46,6 +46,12 @@ volatile u32 G_u32UserAppFlags;                       /* Global state flags */
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 /* Existing variables (defined in other files -- should all contain the "extern" keyword) */
+extern AntSetupDataType G_stAntSetupData;                         /* From ant.c */
+
+extern u32 G_u32AntApiCurrentDataTimeStamp;                       /* From ant_api.c */
+extern AntApplicationMessageType G_eAntApiCurrentMessageClass;    /* From ant_api.c */
+extern u8 G_au8AntApiCurrentData[ANT_APPLICATION_MESSAGE_BYTES];  /* From ant_api.c */
+
 extern volatile u32 G_u32SystemFlags;                  /* From main.c */
 extern volatile u32 G_u32ApplicationFlags;             /* From main.c */
 
@@ -88,24 +94,26 @@ Promises:
 */
 void UserAppInitialize(void)
 {
- /* All discrete LEDs to off */
-  LedOff(WHITE);
-  LedOff(PURPLE);
-  LedOff(BLUE);
-  LedOff(CYAN);
-  LedOff(GREEN);
-  LedOff(YELLOW);
-  LedOff(ORANGE);
-  LedOff(RED);
+  u8 au8Message[] = "Please press buttons";
   
-  /* Backlight to white */  
-  LedOn(LCD_RED);
-  LedOn(LCD_GREEN);
-  LedOn(LCD_BLUE);
-  
+  LCDMessage(LINE1_START_ADDR,au8Message);
+
+ /* Configure ANT for this application */
+  G_stAntSetupData.AntChannel          = ANT_CHANNEL_USERAPP;
+  G_stAntSetupData.AntSerialLo         = ANT_SERIAL_LO_USERAPP;
+  G_stAntSetupData.AntSerialHi         = ANT_SERIAL_HI_USERAPP;
+  G_stAntSetupData.AntDeviceType       = ANT_DEVICE_TYPE_USERAPP;
+  G_stAntSetupData.AntTransmissionType = ANT_TRANSMISSION_TYPE_USERAPP;
+  G_stAntSetupData.AntChannelPeriodLo  = ANT_CHANNEL_PERIOD_LO_USERAPP;
+  G_stAntSetupData.AntChannelPeriodHi  = ANT_CHANNEL_PERIOD_HI_USERAPP;
+  G_stAntSetupData.AntFrequency        = ANT_FREQUENCY_USERAPP;
+  G_stAntSetupData.AntTxPower          = ANT_TX_POWER_USERAPP;
+
+
   /* If good initialization, set state to Idle */
-  if( 1 )
+  if( AntChannelConfig(ANT_MASTER) )
   {
+    AntOpenChannel();
     UserApp_StateMachine = UserAppSM_Idle;
   }
   else
@@ -151,124 +159,97 @@ State Machine Function Definitions
 /* Wait for a message to be queued */
 static void UserAppSM_Idle(void)
 {
-  static u8 u8ColorIndex = 0;
-   static u16 u16BlinkCount = 0;
-    static u8 u8Counter = 0;
-
-  u16BlinkCount++;
-  if(u16BlinkCount == 100)
+  static u8 u8FalseColor[]={10};
+  static u8 u8TrueColor[]={0x11,22,33,44};
+  static u8 u8CurrentColor[]={0, 0,0xA5, 0, 0, 0, 0, 0};
+  
+  static u8 u8Counter=0;
+  
+  static u8 u8ColorCount=0;
+  
+  u8Counter++;
+  if(IsButtonPressed(BUTTON0))
   {
-    u16BlinkCount = 0;
-    /* Parse the current count to set the LEDs.  RED is bit 0, ORANGE is bit 1,
-    YELLOW is bit 2, GREEN is bit 3. */
     
-    if(u8Counter & 0x01)
+    LedOn(WHITE);
+    u8CurrentColor[0]=0xff;
+    u8ColorCount++;
+    u8Counter=0;
+  }
+  else
+  {
+    LedOff(WHITE);
+  }
+  
+  if(IsButtonPressed(BUTTON1))
+  {
+    LedOn(BLUE);
+    u8CurrentColor[0]=1;
+    u8ColorCount++;
+    u8Counter=0;
+  }
+  else
+  {
+    LedOff(BLUE);
+  }
+  
+  if(IsButtonPressed(BUTTON2))
+  {
+    LedOn(YELLOW);
+    u8CurrentColor[0]=2;
+    u8ColorCount++;
+    u8Counter=0;
+  }
+  else
+  {
+    LedOff(YELLOW);
+  }
+  
+  if(IsButtonPressed(BUTTON3))
+  {
+    LedOn(RED);
+    u8CurrentColor[0]=3;
+    u8ColorCount++;
+    u8Counter=0;
+  }
+  else
+  {
+    LedOff(RED);
+  }
+  
+  if(u8ColorCount=0)
+  {
+    u8Counter=0;
+  }
+  
+   /*if(u8Counter==1000)
+  {
+   if(u8Counter<10)
     {
-      LedOn(RED);
-    }
-    else
-    {
-      LedOff(RED);
-    }
-
-    if(u8Counter & 0x02)
-    {
-      LedOn(ORANGE);
-    }
-    else
-    {
-      LedOff(ORANGE);
-    }
-
-    if(u8Counter & 0x04)
-    {
-      LedOn(YELLOW);
-    }
-    else
-    {
-      LedOff(YELLOW);
-    }
-
-    if(u8Counter & 0x08)
-    {
-      LedOn(GREEN);
-    }
-    else
-    {
-      LedOff(GREEN);
+      for(u8 i=u8ColorCount;i<11-u8ColorCount;i++)
+      {
+        u8CurrentColor[i]=u8FalseColor[0];
+      }
     }
     
-    /* Update the counter and roll at 16 */
-    u8Counter++;
-    if(u8Counter == 16)
-    {
-      u8Counter = 0;
-       /* Manage the back light color */
-      u8ColorIndex++;
-      if(u8ColorIndex == 7)
-      {
-        u8ColorIndex = 0;
-      }
-      /* Set the backlight color: white (all), purple (blue + red), blue, cyan (blue + green),
-      green, yellow (green + red), red */
-      switch(u8ColorIndex)
-      {
-        case 0: /* white */
-          LedOn(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-        case 1: /* purple */
-          LedOn(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-        case 2: /* blue */
-          LedOff(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-          
-        case 3: /* cyan */
-          LedOff(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOn(LCD_BLUE);
-          break;
-          
-        case 4: /* green */
-          LedOff(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        case 5: /* yellow */
-          LedOn(LCD_RED);
-          LedOn(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        case 6: /* red */
-          LedOn(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-          
-        default: /* off */
-          LedOff(LCD_RED);
-          LedOff(LCD_GREEN);
-          LedOff(LCD_BLUE);
-          break;
-      }
-
-    }
-} 
+    AntQueueBroadcastMessage(u8CurrentColor);
+    u8Counter=0;
+  }*/
+  
+  if(G_eAntApiCurrentMessageClass == ANT_TICK)
+  {
+    AntQueueBroadcastMessage(u8CurrentColor); 
+  }
+  
+  
 } /* end UserAppSM_Idle() */
-     
+
 
 /*-------------------------------------------------------------------------------------------------------------------*/
 /* Handle an error */
 static void UserAppSM_Error(void)          
 {
+  UserApp_StateMachine = UserAppSM_Idle;
   
 } /* end UserAppSM_Error() */
 
