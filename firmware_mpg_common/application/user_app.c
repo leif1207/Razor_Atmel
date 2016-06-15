@@ -94,13 +94,14 @@ Promises:
 */
 void UserAppInitialize(void)
 {
+  u8 au8WelcomeMessage[] = "ANT Master";
 
   /* Write a weclome message on the LCD */
 #if MPG1
   /* Set a message up on the LCD. Delay is required to let the clear command send. */
   LCDCommand(LCD_CLEAR_CMD);
   for(u32 i = 0; i < 10000; i++);
-
+  LCDMessage(LINE1_START_ADDR, au8WelcomeMessage);
 #endif /* MPG 1*/
   
 #if 0 // untested for MPG2
@@ -170,113 +171,165 @@ static void UserAppSM_Idle(void)
 {
   u8 au8PressMessage[] = "Please press buttons";
   u8 au8RightMessage[]="You are right!";
-  u8 au8WrongMessage[]="Game over";
+  u8 au8WrongMessage[]="Game over!";
+  u8 au8FollowMessage[]="Follow the other";
   
-  static u8 au8TestMessage[20] = {0}; 
+  static u8 au8TestMessage[] = {0, 0, 0, 0, 0, 0, 0, 0};
   static u8 au8CurrentMessage[8]= {0};
-  static u8 u8button_en=0;
-  static u8 u8ColorCount=0;
-  static u8 u8count=0;
-  static u16 u16Time=0;
-  static u16 u16delay=0;
+  static u8 u8Count=0;
   
+  static u8 au8Follow[8];
+  static u8 u8FollowCount=0;
+  static u8 au8Receive[8]={0};
+  
+  
+  static u8 u8signal=0;
+  
+  static u16 u16delay=0;
+  static u16 u16Time=0;
+  static u8 u8button_en=0;
   u16Time++;
   
-  LCDMessage(LINE1_START_ADDR,au8PressMessage);
+if(u8signal==0)//Send
+{
+
   if(u16delay>200)
-  {
+    {
     
        LedOff(WHITE);
        LedOff(BLUE);
        LedOff(YELLOW);
        LedOff(RED);
-  }
-  else
-  {
-    u16delay++;
-  }
+    }
+    else
+    {
+      u16delay++;
+    }
   
-  
-   if( WasButtonPressed(BUTTON0))
+ if(WasButtonPressed(BUTTON0))
   {
-     LedOn(WHITE);
-     u16delay=0;
-    au8TestMessage[u8ColorCount] =1;
-    u8button_en=1;
-    u16Time=0;
     ButtonAcknowledge(BUTTON0);
-    u8ColorCount++;
-  }
-  
-  
-   if( WasButtonPressed(BUTTON1))
-  {
-     LedOn(BLUE);
-     u16delay=0;
-    au8TestMessage[u8ColorCount] =2;
-     u8button_en=1;
+    LedOn(WHITE);
+    au8TestMessage[u8Count]=1;
+    u8Count++;
+    u16delay=0;
     u16Time=0;
-    ButtonAcknowledge(BUTTON1);
-    u8ColorCount++;
-  }
-  
- 
-   if( WasButtonPressed(BUTTON2))
-  {
-     LedOn(YELLOW);
-     u16delay=0;
-    au8TestMessage[u8ColorCount] =3;
-     u8button_en=1;
-    u16Time=0;
-    ButtonAcknowledge(BUTTON2);
-    u8ColorCount++;
-  }
-
-
- 
-   if( WasButtonPressed(BUTTON3))
-  {
-     LedOn(RED);
-      u16delay=0;
-    au8TestMessage[u8ColorCount] =4;
     u8button_en=1;
-    u16Time=0;
-    ButtonAcknowledge(BUTTON3);
-    u8ColorCount++;
   }
-  if(u8ColorCount==7)
+ if(WasButtonPressed(BUTTON1))
   {
-    u8ColorCount=0;
+    ButtonAcknowledge(BUTTON1);
+    LedOn(BLUE);
+    au8TestMessage[u8Count]=2;
+    u8Count++;
+    u16delay=0;
+    u16Time=0;
+    u8button_en=1;
   }
+ if(WasButtonPressed(BUTTON2))
+  {
+    ButtonAcknowledge(BUTTON2);
+    LedOn(YELLOW);
+    au8TestMessage[u8Count]=3;
+    u8Count++;
+    u16delay=0;
+    u16Time=0;
+    u8button_en=1;
+  }
+ if(WasButtonPressed(BUTTON3))
+  {
+    ButtonAcknowledge(BUTTON3);
+    LedOn(RED);
+    au8TestMessage[u8Count]=4;
+    u8Count++;
+    u16delay=0;
+    u16Time=0;
+    u8button_en=1;
+  }
+  
+  if(u8Count==7)
+  {
+    u8Count=0;
+  }
+}//end if(signal==0)
+
+  if(u8signal==1)//Receive
+  {
+    
+    LCDMessage(LINE1_START_ADDR,au8FollowMessage);
+    if( WasButtonPressed(BUTTON0))
+    {
+     au8Follow[u8FollowCount]=1;
+     u8FollowCount++;
+    }
+    if(WasButtonPressed(BUTTON1))
+    {
+      au8Follow[u8FollowCount]=2;
+      u8FollowCount++;
+    }
+    if(WasButtonPressed(BUTTON2))
+    {
+      au8Follow[u8FollowCount]=3;
+      u8FollowCount++;
+    }
+    if(WasButtonPressed(BUTTON3))
+    {
+      au8Follow[u8FollowCount]=4;
+      u8FollowCount++;  
+    }
+  }//end if(signal==1)
+ 
+  for(u8 i=0;i<8;i++)//compare
+  {
+    if(au8Follow[i]!=au8Receive[i])
+    {
+      LCDClearChars(LINE1_START_ADDR ,20);
+      LCDMessage(LINE1_START_ADDR,au8WrongMessage);
+    }
+  }
+  
   if( AntReadData() )
   {
-    
+       
     if(G_eAntApiCurrentMessageClass == ANT_DATA)
     {
-    
-     }
-    
-    
+      for(u8 i=0;i<8;i++)
+      {
+        if(au8Receive[i]!=G_au8AntApiCurrentData[i])
+        {
+          au8Receive[i]=G_au8AntApiCurrentData[i];
+        }
+      }
+      
+
+#ifdef MPG1
+      
+#endif /* MPG1 */
+      
+#ifdef MPG2
+#endif /* MPG2 */
+      
+    }
     else if(G_eAntApiCurrentMessageClass == ANT_TICK)
     {
-    
-      if((u16Time++>2000)&&(u8button_en==1))
-      {
-  
-           u16Time =0;
+     
+      if((u16Time>2000)&&(u8button_en==1))
+       { 
+            u16Time =0;
            u8button_en=0;
-           u8ColorCount=0;
-           for(u8count=0;u8count<8;u8count++)
+           u8Count=0;
+           u8signal=1;
+           for(u8 u8count=0;u8count<8;u8count++)
            {
-             
-               au8CurrentMessage[u8count]=au8TestMessage[u8count];
-               au8TestMessage[u8count]=0;
+             au8CurrentMessage[u8count]=au8TestMessage[u8count];
+             au8TestMessage[u8count]=0;
             }
-      }
-        AntQueueBroadcastMessage(au8CurrentMessage);
+      
     }
-
-  }
+    AntQueueBroadcastMessage(au8CurrentMessage);
+    }
+  } /* end AntReadData() */
+  
 } /* end UserAppSM_Idle() */
 
 
