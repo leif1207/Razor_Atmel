@@ -175,8 +175,10 @@ static void UserAppSM_Idle(void)
   u8 au8RightMessage[]="You are right!";
   u8 au8WrongMessage[]="Game over!";
   u8 au8FollowMessage[]="  Follow  the  other  ";
+  u8 au8WinMessage1[]="We are";
+  u8 au8WinMessage2[]="the best partner!";
   
-  static u8 au8TestMessage[] = {0, 0, 0, 0, 0, 0, 0, 0};
+  static u8 au8TestMessage[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   static u8 au8CurrentMessage[8]= {0};
   static u8 u8Count=0;
   
@@ -191,7 +193,8 @@ static void UserAppSM_Idle(void)
   static u16 u16delay=0;
   static u16 u16Time=0;
   static u8 u8button_en=0;
-  u16Time++;
+  static u8 u8sendsecond_en=0;
+  
   
   static u8 u8NewData;
   static u8 u8Counter;
@@ -200,87 +203,98 @@ static void UserAppSM_Idle(void)
   static u16 u16FollowTime=0;
   static u8 u8DataCounter;
   
-  static u8 u8WinCount=0;
-if(u8signal==0)//Send
-{
-  u16PressTime++;
-  if(u16PressTime>2000)
-  {           
-       u16PressTime=0;         
-       LCDCommand(LCD_CLEAR_CMD);
-       LCDMessage(LINE1_START_ADDR,au8PressMessage);             
-   }
-
-  if(u16delay>200)
+  static u8 u8WinMusic=FALSE;
+  static u16 u16MusicCounter = 480;
+  static u8 i = 0;
+  static u8 u8WinMusicCount=0;
+  static u8 u8WinTextCount=0;
+  static u16 u16WinTextTime=0;
+  
+  u16Time++;
+  
+  /*Send message to slave*/
+  if(u8signal==0)
+  {
+    /*You are Right,you press button again*/
+    u16PressTime++;
+    if(u16PressTime>4000)
     {
-    
-       LedOff(WHITE);
-       LedOff(BLUE);
-       LedOff(YELLOW);
-       LedOff(RED);
+      u16PressTime=0;         
+      LCDCommand(LCD_CLEAR_CMD);
+      LCDMessage(LINE1_START_ADDR,au8PressMessage);             
+    }
+    /*When you are pressing,delay and LedOff LED */
+    if(u16delay>200)
+    {
+      LedOff(WHITE);
+      LedOff(BLUE);
+      LedOff(YELLOW);
+      LedOff(RED);
     }
     else
     {
       u16delay++;
     }
+    
+    /*Once you press one BUTTON,LedOn LED the corresponding,put 1,2,3or4 in an array*/
+    if(WasButtonPressed(BUTTON0))
+    {
+      ButtonAcknowledge(BUTTON0);
+      LedOn(WHITE);
+      au8TestMessage[u8Count]=1;
+      u8Count++;
+      u16delay=0;
+      u16Time=0;                           
+      u8button_en=1;
+    }
+    if(WasButtonPressed(BUTTON1))
+    {
+      ButtonAcknowledge(BUTTON1);
+      LedOn(BLUE);
+      au8TestMessage[u8Count]=2;
+      u8Count++;
+      u16delay=0;
+      u16Time=0;
+      u8button_en=1;
+    }
+    if(WasButtonPressed(BUTTON2))
+    {
+      ButtonAcknowledge(BUTTON2);
+      LedOn(YELLOW);
+      au8TestMessage[u8Count]=3;
+      u8Count++;
+      u16delay=0;
+      u16Time=0;
+      u8button_en=1;
+    }
+    if(WasButtonPressed(BUTTON3))
+    {
+      ButtonAcknowledge(BUTTON3);
+      LedOn(RED);
+      au8TestMessage[u8Count]=4;
+      u8Count++;
+      u16delay=0;
+      u16Time=0;
+      u8button_en=1;
+    }
+    if(u8Count==8)
+    {
+      u8Count=0;
+    }
+  }/*end if(signal==0)*/
   
- if(WasButtonPressed(BUTTON0))
+  /*Receive Slave's Message*/
+  if(u8signal==1)
   {
-    ButtonAcknowledge(BUTTON0);
-    LedOn(WHITE);
-    au8TestMessage[u8Count]=1;
-    u8Count++;
-    u16delay=0;
-    u16Time=0;
-    u8button_en=1;
-  }
- if(WasButtonPressed(BUTTON1))
-  {
-    ButtonAcknowledge(BUTTON1);
-    LedOn(BLUE);
-    au8TestMessage[u8Count]=2;
-    u8Count++;
-    u16delay=0;
-    u16Time=0;
-    u8button_en=1;
-  }
- if(WasButtonPressed(BUTTON2))
-  {
-    ButtonAcknowledge(BUTTON2);
-    LedOn(YELLOW);
-    au8TestMessage[u8Count]=3;
-    u8Count++;
-    u16delay=0;
-    u16Time=0;
-    u8button_en=1;
-  }
- if(WasButtonPressed(BUTTON3))
-  {
-    ButtonAcknowledge(BUTTON3);
-    LedOn(RED);
-    au8TestMessage[u8Count]=4;
-    u8Count++;
-    u16delay=0;
-    u16Time=0;
-    u8button_en=1;
-  }
-  
-  if(u8Count==8)
-  {
-    u8Count=0;
-  }
-}//end if(signal==0)
-if(u8signal==1)//Receive
-{
-  u16FollowTime++;
-  if(u16FollowTime>2000)
-  {
-    u16FollowTime=0;
-    LCDCommand(LCD_CLEAR_CMD);
-    LCDMessage(LINE1_START_ADDR,au8FollowMessage);
-  }// LCDClearChars(LINE1_START_ADDR+17,3);
-  if( WasButtonPressed(BUTTON0))
-  {
+    u16FollowTime++;
+    if(u16FollowTime>2000)
+    {
+      u16FollowTime=0;
+      LCDCommand(LCD_CLEAR_CMD);
+      LCDMessage(LINE1_START_ADDR,au8FollowMessage);
+    }
+    if( WasButtonPressed(BUTTON0))
+    {
     ButtonAcknowledge(BUTTON0);
     au8Follow[u8FollowCount]=1;
     u8FollowCount++;
@@ -303,6 +317,7 @@ if(u8signal==1)//Receive
     au8Follow[u8FollowCount]=4;
     u8FollowCount++;
   }
+  /*Determine whether two arrays are equal*/
   if(u8DataCounter!=0)
   {
     if(u8DataCounter==u8FollowCount)
@@ -319,13 +334,24 @@ if(u8signal==1)//Receive
       {
         judge=TRUE;
       }
+      /*If you are right,LCD show */
       if(judge)
        {
          u8signal=0;
-         //LCDCommand(LCD_CLEAR_CMD);
          LCDMessage(LINE2_START_ADDR+2,au8RightMessage);
-         u8WinCount++;
+         u8WinMusicCount++;
+         u8WinTextCount++;
+         if(u8WinMusicCount==4)
+         {
+           au8CurrentMessage[0]=5;
+           for(u8 j=1;j<8;j++)
+           {
+             au8CurrentMessage[j]=0;
+           }
+           u8signal=3;
+         }
        }
+      /*If you are wrong,LCD show */
       else if(judge==FALSE)
       {
         LCDCommand(LCD_CLEAR_CMD);
@@ -337,31 +363,99 @@ if(u8signal==1)//Receive
     u8DataCounter=0;
   }//end if u8DataCount!=0
   
+  }//end if(signal==1)
   
-  
-  
-  
-}//end if(signal==1)
-
-if(u8signal==2)
-{
- AntCloseChannel();
-}
-
-if(u8NewData==1)
-{
-  led_display_button(au8Receive,&u8NewData) ;        
-}
-
-for(u8 m=0;m<8;m++)
-{
-  if(au8Receive[m]!=0)
+  /*Game over,Close channel*/
+  if(u8signal==2)
   {
-      u8DataCounter++;
-   } 
-} 
-
+    AntCloseChannel();
+  }
   
+  /*Once get new data,LedOn LED the corresponding*/
+  if(u8NewData==1)
+  {
+    led_display_button(au8Receive,&u8NewData) ;        
+  }
+  
+  /*Check how many have received except zero*/
+  for(u8 m=0;m<8;m++)
+  {
+    if(au8Receive[m]!=0)
+    {
+      u8DataCounter++;
+    } 
+  } 
+
+  /*Both of you equal to eight,you are winner,LCD show*/
+    if(u8signal==3)
+  {
+    
+    u16WinTextTime++;
+    if(u16WinTextTime>200)
+    {
+     u16WinTextTime=0;
+    LCDCommand(LCD_CLEAR_CMD);
+    LCDMessage(LINE1_START_ADDR+6,au8WinMessage1);
+    LCDMessage(LINE2_START_ADDR,au8WinMessage2);
+    }
+  }
+  
+  /*You are winner,so you can listen a song*/
+   if(u8WinMusicCount==4)
+  {
+    u8WinMusicCount=0;
+    u8WinMusic=TRUE;
+    
+  }
+  if(u8WinMusic)
+  { 
+    char music1[100] = "51351353613613637247247777710";//Music
+    u16MusicCounter++; 
+  
+    if((u16MusicCounter-500)%200 == 0 && music1 != '\0')
+    {
+        
+          switch(music1[i])
+        {
+          case '1': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 533);
+                  break;
+          case '2': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 587);
+                  break;
+          case '3': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 659);
+                  break;
+          case '4': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 677);
+                  break;
+          case '5': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 784);;
+                  break;
+          case '6': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 880);
+                  break; 
+          case '7': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 988);
+                  break; 
+          case '8': PWMAudioOn(BUZZER1);
+                  PWMAudioSetFrequency(BUZZER1, 392);
+                  break; 
+          case '0': PWMAudioOff(BUZZER1);
+                  break;                  
+        }
+        i++;
+    }
+    if(u16MusicCounter == 10000)
+    {
+      PWMAudioOff(BUZZER1);
+      u8WinMusic=FALSE;
+      u16MusicCounter=480;
+      i = 0;
+    }
+   
+  }/*end if(u8WinMusic)*/
+
   
   if( AntReadData() )
   {
@@ -376,11 +470,11 @@ for(u8 m=0;m<8;m++)
           u8NewData=1;
         }
       }
-       
     }//end DATA
+    
     else if(G_eAntApiCurrentMessageClass == ANT_TICK)
     {
-     
+     /*If you didn't press a button in two seconds,so send the message to another array,and send it to slave*/
       if((u16Time>2000)&&(u8button_en==1))
        { 
             u16Time =0;
@@ -391,14 +485,15 @@ for(u8 m=0;m<8;m++)
            {
              au8CurrentMessage[u8count]=au8TestMessage[u8count];
              au8TestMessage[u8count]=0;
-            }
+           }
        }
-     AntQueueBroadcastMessage(au8CurrentMessage);
+      AntQueueBroadcastMessage(au8CurrentMessage);
     }//end TICK
   } /* end AntReadData() */
   
 } /* end UserAppSM_Idle() */
 
+/*When you get new message,LED show*/
 static void  led_display_button(u8 *u8lastdata,u8 *u8new_data)
 {
   static u32 u32dataCount=0;
